@@ -297,7 +297,7 @@
             </div>
         </div>
         <div class="footer">
-            <p>Alerte : Busy > 3 min | Wrap up > 40 s | Not Accepted<br><br><br><br><br>&copy; 2026 Work Force Management - Concentrix Madagascar</p>
+            <p>Alerte : Busy > 4 min | Wrap up > 40 s | Not Accepted<br><br><br><br><br>&copy; 2026 Work Force Management - Concentrix Madagascar</p>
         </div>
     </div>
 
@@ -512,7 +512,7 @@
                     if (filterMode === 'without' && a.hasCCase) return false;
                     
                     // Seuils d'alertes
-                    if (a.status === 'busy' && a.durationSec > 180) return true;
+                    if (a.status === 'busy' && a.durationSec > 240) return true;
                     if (a.status === 'wrap' && a.durationSec > 40) return true;
                     if (a.status === 'notaccepted') return true;
                     return false;
