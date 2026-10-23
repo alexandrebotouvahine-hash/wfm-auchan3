@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerte Vonage - WFM</title>
+    <link rel="icon" type="image/png" href="images.png">
+    <style>
+        :root {
+            --auchan-blue: #0055A5;
+            --auchan-red: #E2001A;
+            --auchan-light: #F3F3F3;
+            --auchan-dark: #1c3a50;
+            --alert-busy-bg: #FFE5E5;
+            --alert-busy-border: #E2001A;
+            --alert-wrap-bg: #bde0fe;
+            --alert-wrap-border: #003049;
+            --alert-notaccepted-bg: #f8d7da;
+            --alert-notaccepted-border: #721c24;
+            --win11-bg: #f0f0f0;
+            --win11-card: rgba(255, 255, 255, 0.85);
+            --win11-border: rgba(0, 0, 0, 0.1);
+            --win11-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI Variable", "Segoe UI", Arial, sans-serif; }
+        
+        body { 
+            background: var(--win11-bg); 
+            min-height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px; 
+            background-image: radial-gradient(circle at 0% 0%, #ffffff 0%, transparent 50%), radial-gradient(circle at 100% 100%, #e0e0e0 0%, transparent 50%);
+        }
+        
+        .container { 
+            background: var(--win11-card); 
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            width: 100%; 
+            max-width: 1000px; 
+            border-radius: 12px; 
+            border: 1px solid var(--win11-border);
+            box-shadow: var(--win11-shadow); 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        
+        .header { 
+            background: var(--auchan-blue); 
+            color: white; 
+            padding: 20px 24px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+        }
+        .header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.5px; }
+        .header .time { font-size: 0.9rem; opacity: 0.9; font-weight: 500; }
+        
+        .content { padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+        
+        .controls-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between; }
+        .date-export, .sound-control, .file-control, .filter-control { display: flex; align-items: center; gap: 8px; }
+        
+        .paste-area label { font-weight: 600; color: var(--auchan-dark); display: block; margin-bottom: 8px; font-size: 14px; }
+        
+        textarea { 
+            width: 100%; 
+            height: 140px; 
+            border: 1px solid var(--win11-border); 
+            border-radius: 8px; 
+            padding: 12px; 
+            font-size: 13px; 
+            font-family: "Cascadia Code", "Consolas", monospace; 
+            resize: vertical; 
+            background: rgba(255, 255, 255, 0.6);
+            transition: all 0.2s;
+        }
+        textarea:focus { outline: none; border-color: var(--auchan-blue); background: #fff; box-shadow: 0 0 0 2px rgba(0, 85, 165, 0.2); }
+        
+        .button-group { display: flex; flex-wrap: wrap; gap: 10px; }
+        
+        button { 
+            padding: 10px 18px; 
+            border: 1px solid transparent; 
+            border-radius: 6px; 
+            font-weight: 500; 
+            cursor: pointer; 
+            transition: all 0.15s ease; 
+            font-size: 13px; 
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-capture, .btn-analyze, .btn-export, .btn-history, .btn-load-file, .btn-clear, .btn-sync { 
+            background: #ffffff; 
+            color: #333; 
+            border: 1px solid #d0d0d0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn-capture:hover, .btn-analyze:hover, .btn-export:hover, .btn-history:hover, .btn-load-file:hover, .btn-clear:hover, .btn-sync:hover { 
+            background: #f5f5f5; 
+            border-color: #b0b0b0;
+        }
+        .btn-analyze { background: var(--auchan-blue); color: white; border-color: var(--auchan-blue); }
+        .btn-analyze:hover { background: #004080; border-color: #004080; }
+        
+        button:active { transform: scale(0.98); }
+        
+        .results { 
+            min-height: 150px; 
+            background: rgba(255, 255, 255, 0.5); 
+            border-radius: 8px; 
+            padding: 16px; 
+            border: 1px solid var(--win11-border);
+        }
+        .results .summary { font-weight: 600; margin-bottom: 12px; color: var(--auchan-dark); font-size: 14px; }
+        
+        .agent-card { 
+            background: #ffffff; 
+            padding: 12px 16px; 
+            margin-bottom: 10px; 
+            border-radius: 8px; 
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 6px; 
+        }
+        .agent-name { font-weight: 600; color: #111; font-size: 15px; }
+        .agent-info { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; gap: 8px; }
+        
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-busy { background: var(--alert-busy-bg); color: var(--alert-busy-border); }
+        .status-wrap { background: var(--alert-wrap-bg); color: var(--alert-wrap-border); }
+        .status-notaccepted { background: var(--alert-notaccepted-bg); color: var(--alert-notaccepted-border); }
+        
+        .duration { font-weight: 600; color: #333; font-family: "Cascadia Code", monospace; }
+        
+        .btn-play { 
+            width: 34px; 
+            height: 34px; 
+            border-radius: 50%; 
+            background: #f0f0f0; 
+            color: #333; 
+            border: 1px solid #ccc; 
+            cursor: pointer; 
+            font-size: 14px; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 0; 
+            flex-shrink: 0; 
+            margin-left: auto; 
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+        .btn-play:hover { background: #e0e0e0; }
+        .btn-play:active { transform: scale(0.9); }
+        .btn-play.speaking { background: #E2001A; color: white; border-color: #E2001A; animation: playPulse 1.5s infinite; }
+        @keyframes playPulse { 0%,100%{box-shadow:0 0 0 0 rgba(226,0,26,0.4);}50%{box-shadow:0 0 0 6px rgba(226,0,26,0);} }
+        
+        .no-alert { text-align: center; color: #666; padding: 30px; font-size: 14px; font-weight: 500; }
+        
+        .footer { padding: 15px; background: transparent; text-align: center; font-size: 12px; color: #888; border-top: 1px solid var(--win11-border); }
+        
+        .notification { display: none; padding: 10px; margin-bottom: 15px; border-radius: 6px; text-align: center; font-weight: 600; font-size: 13px; }
+        .notification.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .notification.info { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .notification.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        
+        /* Supabase Sync Row */
+        .sync-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; background: rgba(0,0,0,0.03); border: 1px solid var(--win11-border); border-radius: 8px; }
+        .sync-row label { font-weight: 600; color: var(--auchan-dark); font-size: 13px; }
+        .sync-row input[type="text"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; width: 150px; font-family: monospace; font-size: 12px; background: #fff; }
+        .sync-status { font-size: 12px; color: #666; margin-left: auto; font-weight: 500; }
+        .sync-status.active { color: #28a745; }
+        .sync-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #999; margin-right: 4px; }
+        .sync-status.active .sync-dot { background: #28a745; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;}50%{opacity:0.4;} }
+
+        /* Audio controls */
+        .audio-panel { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; background: rgba(0,0,0,0.03); border: 1px solid var(--win11-border); border-radius: 8px; padding: 10px 14px; margin-bottom: 5px; }
+        .audio-panel .group { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .audio-panel select { padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; max-width: 180px; background: #fff; }
+        .audio-panel input[type="range"] { width: 80px; cursor: pointer; accent-color: var(--auchan-blue); }
+        .audio-panel label { font-weight: 600; color: var(--auchan-dark); white-space: nowrap; }
+        
+        /* Modals */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 100001; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: white; padding: 24px; border-radius: 12px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        
+        /* Boutons Flottants (Indispo Chat & Stop) */
+        .floating-actions { position: fixed; bottom: 24px; right: 24px; display: flex; gap: 12px; z-index: 9999; }
+        .btn-float { 
+            border-radius: 30px; 
+            padding: 12px 20px; 
+            font-weight: 600; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-float:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+        .btn-voice-chat { background: #001d3d; color: white; }
+        .btn-stop { background: #E2001A; color: white; }
+        .btn-stop:active, .btn-voice-chat:active { transform: translateY(0); }
+
+        /* Capture overlay */
+        #capture-overlay { position: fixed; inset: 0; z-index: 99999; cursor: crosshair; background: rgba(0,0,0,0.45); user-select: none; }
+        #capture-selection { position: absolute; border: 2px solid #0055A5; background: transparent; display: none; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); z-index: 1; }
+        #capture-selection.success { border-color: #28a745; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45), 0 0 0 4px rgba(40,167,69,0.35); }
+        #capture-hint { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.88); color: #fff; padding: 12px 22px; border-radius: 8px; font-size: 14px; z-index: 100000; pointer-events: none; white-space: nowrap; }
+        #capture-toolbar { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 100000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Auchan - Pilotage WFM</h1>
+            <span class="time" id="current-time"></span>
+        </div>
+        <div class="content">
+            <div class="notification" id="notification"></div>
+
+            <div class="controls-row">
+                <div class="file-control">
+                    <button class="btn-load-file" id="btn-load-file">📂 Historiser</button>
+                    <input type="file" id="hidden-file-input" accept=".json,application/json" style="display:none;">
+                    <span id="file-status" style="font-size:12px; color:#666;">Aucun fichier chargé</span>
+                </div>
+                <div class="date-export">
+                    <label for="export-date" style="font-weight:bold;">Date :</label>
+                    <input type="date" id="export-date" style="padding:6px; border:1px solid #ccc; border-radius:4px; background:#fff;">
+                    <button class="btn-export" id="btn-export-csv">📥 Exporter</button>
+                </div>
+                <div class="sound-control">
+                    <label style="font-weight:bold;">🔊 Son :</label>
+                    <input type="checkbox" id="sound-toggle" checked>
+                    <span style="font-size:12px;">Activer</span>
+                </div>
+            </div>
+
+            <!-- SYNC ROW (Supabase) -->
+            <div class="sync-row">
+                <label>🔄 Supabase Sync :</label>
+                <input type="text" id="sync-code" placeholder="Code de session">
+                <button class="btn-sync" id="btn-sync-activate">Connecter</button>
+                <button class="btn-clear" id="btn-sync-deactivate" style="display:none;">Déconnecter</button>
+                <button class="btn-history" id="btn-sync-qr" style="display:none;">📱 Afficher QR</button>
+                <span class="sync-status" id="sync-status"><span class="sync-dot"></span>Non connecté</span>
+            </div>
+
+            <!-- Panneau Voix uniquement (Musique supprimée) -->
+            <div class="audio-panel">
+                <div class="group">
+                    <label>🗣️ Voix :</label>
+                    <select id="voice-select"><option value="">Chargement...</option></select>
+                </div>
+                <div class="group">
+                    <label>🎚️ Vol. Voix :</label>
+                    <input type="range" id="voice-volume" min="0" max="1" step="0.05" value="1.0">
+                </div>
+                <div class="group" style="margin-left: auto;">
+                    <label>📧 Filtre Skills :</label>
+                    <select id="skill-filter">
+                        <option value="all">Tous les agents</option>
+                        <option value="with">Avec "C Case" (Mails)</option>
+                        <option value="without">Sans "C Case"</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="paste-area">
+                <label for="paste-input">Copier le contenu du tableau Vonage (CTRL+C)</label>
+                <textarea id="paste-input" placeholder="Coller ici(CTRL+V)..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-analyze" id="btn-analyze">🔍 Analyser</button>
+                <button class="btn-history" id="btn-history">📊 Exporter Historique complet</button>
+                <button class="btn-capture" id="btn-capture">📸 Capture écran</button>
+                <button class="btn-clear" id="btn-clear">🗑️ Effacer</button>
+            </div>
+
+            <div class="results" id="results">
+                <div class="no-alert">En attente du tableau à analyser...</div>
+            </div>
+        </div>
+        <div class="footer">
+            <p>Alerte : Busy > 3 min | Wrap up > 40 s | Not Accepted<br><br><br><br><br>&copy; 2026 Work Force Management - Concentrix Madagascar</p>
+        </div>
+    </div>
+
+    <!-- Boutons Flottants Permanents -->
+    <div class="floating-actions">
+        <button id="btn-voice-chat" class="btn-float btn-voice-chat">💬 Indispo Chat</button>
+        <button id="btn-stop-voice" class="btn-float btn-stop" title="Arrêter la lecture">⏹️ Stop</button>
+    </div>
+
+    <!-- Modal QR -->
+    <div class="modal-overlay" id="qr-modal">
+        <div class="modal-content">
+            <h3>📱 Scanner pour connecter</h3>
+            <p style="font-size:12px; color:#666; margin: 10px 0 20px;">Scannez avec l'appareil photo du téléphone pour lier les deux appareils.</p>
+            <div id="qr-container" style="margin-bottom: 20px; display: flex; justify-content: center;"></div>
+            <button class="btn-clear" id="btn-close-qr" style="width:100%;">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ==================== CONFIGURATION SUPABASE ====================
+            const SUPABASE_URL = 'https://tktxzaiatuyaeqwdubcg.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrdHh6YWlhdHV5YWVxd2R1YmNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2NTc5NDUsImV4cCI6MjEwODIzMzk0NX0.7Axkwz9ahsz0VzG67kznJx9e47XE3O166StSq28VS-U';
+            
+            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // ==================== CONSTANTES ====================
+            const STORAGE_KEY = 'wfm_auchan_alert_history';
+            const SYNC_ROOM_KEY = 'wfm_supabase_room';
+            const SOUND_DURATION = 300;
+            const SOUND_FREQUENCY = 880;
+
+            // ==================== DOM ====================
+            const textarea = document.getElementById('paste-input');
+            const btnAnalyze = document.getElementById('btn-analyze');
+            const btnClear = document.getElementById('btn-clear');
+            const btnExportCsv = document.getElementById('btn-export-csv');
+            const btnHistory = document.getElementById('btn-history');
+            const btnLoadFile = document.getElementById('btn-load-file');
+            const btnCapture = document.getElementById('btn-capture');
+            const hiddenFileInput = document.getElementById('hidden-file-input');
+            const exportDateInput = document.getElementById('export-date');
+            const soundToggle = document.getElementById('sound-toggle');
+            const resultsDiv = document.getElementById('results');
+            const notificationDiv = document.getElementById('notification');
+            const timeSpan = document.getElementById('current-time');
+            const fileStatusSpan = document.getElementById('file-status');
+            
+            // Sync & Filtres
+            const syncCodeInput = document.getElementById('sync-code');
+            const btnSyncActivate = document.getElementById('btn-sync-activate');
+            const btnSyncDeactivate = document.getElementById('btn-sync-deactivate');
+            const btnSyncQR = document.getElementById('btn-sync-qr');
+            const syncStatusSpan = document.getElementById('sync-status');
+            const qrModal = document.getElementById('qr-modal');
+            const btnCloseQr = document.getElementById('btn-close-qr');
+            const qrContainer = document.getElementById('qr-container');
+            const skillFilterSelect = document.getElementById('skill-filter');
+
+            // Audio
+            const voiceSelect = document.getElementById('voice-select');
+            const voiceVolume = document.getElementById('voice-volume');
+
+            // Boutons Flottants
+            const btnVoiceChat = document.getElementById('btn-voice-chat');
+            const btnStopVoice = document.getElementById('btn-stop-voice');
+
+            const today = new Date().toISOString().split('T')[0];
+            exportDateInput.value = today;
+
+            // ==================== STATE ====================
+            let history = [];
+            let fileHandle = null;
+            let lastAnalyzedAgents = []; // Stocke les agents analysés pour le filtre dynamique
+            
+            let syncChannel = null;
+            let currentRoomId = null;
+            let isSyncing = false;
+
+            // ==================== PERSISTANCE ====================
+            function loadFromLocalStorage() {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (!stored) return [];
+                try { return JSON.parse(stored); } catch (e) { return []; }
+            }
+            function saveToLocalStorage() {
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(history)); } catch (e) {}
+            }
+            function isFileSystemAccessSupported() {
+                return typeof window.showOpenFilePicker === 'function';
+            }
+            async function loadFromFile() {
+                if (isFileSystemAccessSupported()) {
+                    try {
+                        const handle = await window.showOpenFilePicker({
+                            types: [{ description: 'Fichier JSON', accept: {'application/json': ['.json']} }], multiple: false
+                        });
+                        fileHandle = handle[0];
+                        const file = await fileHandle.getFile();
+                        const content = await file.text();
+                        history = JSON.parse(content || '[]');
+                        if (!Array.isArray(history)) history = [];
+                        fileStatusSpan.textContent = `Fichier chargé : ${fileHandle.name}`;
+                        showNotification('Historique chargé.', 'success');
+                        renderHistorySummary();
+                        return;
+                    } catch (err) { if (err.name === 'AbortError') return; }
+                }
+                hiddenFileInput.click();
+            }
+
+            hiddenFileInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                try {
+                    const content = await file.text();
+                    const parsed = JSON.parse(content || '[]');
+                    history = Array.isArray(parsed) ? parsed : [];
+                    fileHandle = null;
+                    fileStatusSpan.textContent = `Fichier chargé : ${file.name}`;
+                    showNotification('Historique chargé.', 'success');
+                    renderHistorySummary();
+                } catch (err) { showNotification('Fichier JSON invalide.', 'warning'); }
+                finally { hiddenFileInput.value = ''; }
+            });
+
+            // ==================== ANALYSE ====================
+            function parseDurationToSeconds(text) {
+                if (!text) return 0;
+                const n = text.toLowerCase().replace(/,/g, '');
+                let total = 0;
+                const pats = [
+                    { re: /(\d+)\s*mo/i, mult: 30 * 86400 }, { re: /(\d+)\s*w/i, mult: 7 * 86400 },
+                    { re: /(\d+)\s*d/i, mult: 86400 }, { re: /(\d+)\s*h/i, mult: 3600 },
+                    { re: /(\d+)\s*m(?!o)/i, mult: 60 }, { re: /(\d+)\s*s/i, mult: 1 }
+                ];
+                for (const p of pats) { const m = n.match(p.re); if (m) total += parseInt(m[1], 10) * p.mult; }
+                return total;
+            }
+            function extractDuration(text) {
+                if (!text) return null;
+                const m = text.match(/\b\d+\s*(?:mo|w|d|h|m|s)(?:\s*\d+\s*(?:mo|w|d|h|m|s))*/i);
+                return m ? m[0].trim().replace(/\s+/g, ' ') : null;
+            }
+            function lineStartsWithStatus(line, status) {
+                const esc = status.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                return new RegExp('^' + esc + '(?=\\s|$)', 'i').test(line.trim());
+            }
+            function parseBlock(block) {
+                const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                if (lines.length < 2) return null;
+                const nameMatch = lines[0].match(/^(.*?\bWEB_PST\d+_\d+)/i);
+                if (!nameMatch) return null;
+                const name = nameMatch[1].trim();
+                
+                // Détection du Skill "C Case"
+                const hasCCase = /\bC[\s-]*Case\b/i.test(block);
+
+                const defs = [
+                    { kw: ['Not Accepted', 'Refusé', 'Refuse', 'Not accepted'], type: 'notaccepted' },
+                    { kw: ['Busy'], type: 'busy' },
+                    { kw: ['Wrap up', 'Wrap-up', 'Wrap', 'ACW'], type: 'wrap' }
+                ];
+                let fType = null, fStatus = '', idx = -1;
+                for (let i = 1; i < lines.length; i++) {
+                    for (const d of defs) {
+                        for (const k of d.kw) {
+                            if (lineStartsWithStatus(lines[i], k)) { fType = d.type; fStatus = k; idx = i; break; }
+                        }
+                        if (fType) break;
+                    }
+                    if (fType) break;
+                }
+                if (!fType) return null;
+                let durStr = extractDuration(lines[idx]);
+                if (!durStr && idx + 1 < lines.length) durStr = extractDuration(lines[idx + 1]);
+                if (!durStr) durStr = '0s';
+                
+                return { name, status: fType, statusLabel: fStatus, durationStr: durStr, durationSec: parseDurationToSeconds(durStr), hasCCase };
+            }
+            function analyzeText(text) {
+                const nameRegex = /\b[A-ZÀ-ÿ][A-ZÀ-ÿ]*(?:[ \t]+[A-ZÀ-ÿ][A-ZÀ-ÿ]*)*[ \t]+WEB_PST\d+_\d+/g;
+                const names = []; let m;
+                while ((m = nameRegex.exec(text)) !== null) names.push({ name: m[0].trim(), index: m.index });
+                const unique = [], seen = new Set();
+                for (const n of names) { if (!seen.has(n.name)) { seen.add(n.name); unique.push(n); } }
+                unique.sort((a, b) => a.index - b.index);
+                const agents = [];
+                for (let i = 0; i < unique.length; i++) {
+                    const start = unique[i].index;
+                    const end = i + 1 < unique.length ? unique[i + 1].index : text.length;
+                    const parsed = parseBlock(text.substring(start, end));
+                    if (parsed) agents.push(parsed);
+                }
+                return agents;
+            }
+            
+            function getAlerts(agents) {
+                const filterMode = skillFilterSelect.value;
+                return agents.filter(a => {
+                    // Application du filtre C Case
+                    if (filterMode === 'with' && !a.hasCCase) return false;
+                    if (filterMode === 'without' && a.hasCCase) return false;
+                    
+                    // Seuils d'alertes
+                    if (a.status === 'busy' && a.durationSec > 180) return true;
+                    if (a.status === 'wrap' && a.durationSec > 40) return true;
+                    if (a.status === 'notaccepted') return true;
+                    return false;
+                });
+            }
+
+            // ==================== AUDIO & VOICE ====================
+            function populateVoices() {
+                if (!('speechSynthesis' in window)) return;
+                const voices = window.speechSynthesis.getVoices();
+                const fr = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('fr'));
+                voiceSelect.innerHTML = '';
+                if (fr.length === 0) {
+                    voiceSelect.innerHTML = '<option value="">Aucune voix FR</option>';
+                    return;
+                }
+                fr.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.name;
+                    opt.textContent = `${v.name} (${v.lang})`;
+                    voiceSelect.appendChild(opt);
+                });
+                if (fr.length > 0) voiceSelect.value = fr[0].name;
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.onvoiceschanged = populateVoices;
+                populateVoices();
+            }
+
+            // Règle de lecture vocale stricte
+            function extractFirstName(fullName) {
+                if (!fullName) return '';
+                const cleaned = fullName.replace(/\s*WEB_PST\d+_\d+\s*$/i, '').trim();
+                const parts = cleaned.split(/\s+/).filter(Boolean);
+                if (!parts.length) return cleaned;
+                if (parts.length >= 2 && /^appel de$/i.test(parts[0])) return parts[1];
+                return parts[0];
+            }
+            
+            function durationToSpeech(durStr) {
+                if (!durStr) return 'zéro seconde';
+                const parts = [];
+                const h = durStr.match(/(\d+)\s*h/i), m = durStr.match(/(\d+)\s*m(?!o)/i), s = durStr.match(/(\d+)\s*s/i);
+                if (h) { const n = parseInt(h[1], 10); if (n > 0) parts.push(`${n} ${n === 1 ? 'heure' : 'heures'}`); }
+                if (m) { const n = parseInt(m[1], 10); if (n > 0) parts.push(`${n} ${n === 1 ? 'minute' : 'minutes'}`); }
+                if (s) { const n = parseInt(s[1], 10); if (n > 0) parts.push(`${n} ${n === 1 ? 'seconde' : 'secondes'}`); }
+                return parts.length ? parts.join(' ') : 'zéro seconde';
+            }
+
+            function speakAlert(agent, btnEl) {
+                if (!('speechSynthesis' in window)) return showNotification('Synthèse vocale non disponible.', 'warning');
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+                document.querySelectorAll('.btn-play').forEach(b => { b.classList.remove('speaking'); b.textContent = '▶'; });
+                
+                // 1 & 4 - Prénom en minuscule strict pour forcer la lecture en mot complet
+                const rawFirstName = extractFirstName(agent.name);
+                const firstName = rawFirstName.toLowerCase();
+                const durationSpeech = durationToSpeech(agent.durationStr);
+                
+                // 8 - Règles strictes selon le statut
+                let phrase = "";
+                if (agent.status === 'busy') {
+                    phrase = `appel de ${firstName}`;
+                } else if (agent.status === 'notaccepted') {
+                    phrase = `not accepted ${firstName}`;
+                } else if (agent.status === 'wrap') {
+                    phrase = `wrap up ${firstName}`;
+                } else {
+                    phrase = `appel de ${firstName}`; 
+                }
+                
+                const text = `${phrase}, ${durationSpeech}.`;
+                
+                const utt = new SpeechSynthesisUtterance(text);
+                utt.lang = 'fr-FR';
+                utt.rate = 0.88;
+                utt.pitch = 1.0;
+                utt.volume = parseFloat(voiceVolume.value);
+                const selectedVoice = window.speechSynthesis.getVoices().find(v => v.name === voiceSelect.value);
+                if (selectedVoice) utt.voice = selectedVoice;
+                utt.onstart = () => { if (btnEl) { btnEl.classList.add('speaking'); btnEl.textContent = '⏸'; } };
+                const end = () => { if (btnEl) { btnEl.classList.remove('speaking'); btnEl.textContent = '▶'; } };
+                utt.onend = end; utt.onerror = end;
+                window.speechSynthesis.speak(utt);
+            }
+
+            // Événements Boutons Flottants
+            btnVoiceChat.addEventListener('click', () => {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+                const utt = new SpeechSynthesisUtterance("indispo chat");
+                utt.lang = 'fr-FR';
+                utt.rate = 1.0;
+                utt.volume = parseFloat(voiceVolume.value);
+                const selectedVoice = window.speechSynthesis.getVoices().find(v => v.name === voiceSelect.value);
+                if (selectedVoice) utt.voice = selectedVoice;
+                window.speechSynthesis.speak(utt);
+            });
+
+            btnStopVoice.addEventListener('click', () => {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+                document.querySelectorAll('.btn-play').forEach(b => { b.classList.remove('speaking'); b.textContent = '▶'; });
+                showNotification('Lecture arrêtée.', 'info');
+            });
+
+
+            // ==================== RENDU ====================
+            function renderAlerts(alerts, agentsCount) {
+                let html = `<div class="summary">🚨 ${alerts.length} alertes (${agentsCount} agents analysés)</div>`;
+                if (agentsCount === 0) {
+                    html += `<div class="no-alert">Aucun agent trouvé. Le texte doit contenir les matricules (ex: WEB_PST123_45).</div>`;
+                } else if (alerts.length === 0) {
+                    html += `<div class="no-alert">Aucun dépassement de seuil pour le filtre sélectionné.</div>`;
+                } else {
+                    alerts.forEach((a, idx) => {
+                        let statusClass = 'status-busy';
+                        if (a.status === 'wrap') statusClass = 'status-wrap';
+                        else if (a.status === 'notaccepted') statusClass = 'status-notaccepted';
+                        
+                        const cCaseBadge = a.hasCCase ? `<span style="font-size:10px; background:#e2e8f0; color:#475569; padding:2px 6px; border-radius:4px; margin-left:8px;">C Case</span>` : '';
+                        
+                        html += `
+                            <div class="agent-card">
+                                <div class="agent-name">${String(a.name).replace(/</g, '&lt;')} ${cCaseBadge}</div>
+                                <div class="agent-info">
+                                    <span class="status-badge ${statusClass}">${String(a.statusLabel).replace(/</g, '&lt;')}</span>
+                                    <span class="duration">${String(a.durationStr).replace(/</g, '&lt;')}</span>
+                                    <button class="btn-play" data-idx="${idx}" title="Écouter">▶</button>
+                                </div>
+                            </div>`;
+                    });
+                }
+                resultsDiv.innerHTML = html;
+                resultsDiv.querySelectorAll('.btn-play').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const agent = alerts[parseInt(btn.dataset.idx, 10)];
+                        if (agent) speakAlert(agent, btn);
+                    });
+                });
+            }
+            
+            function renderResults(agents, isFromSync = false) {
+                lastAnalyzedAgents = agents;
+                const alerts = getAlerts(agents);
+                renderAlerts(alerts, agents.length);
+                
+                if (alerts.length > 0 && !isFromSync) {
+                    if (soundToggle.checked) {
+                        try {
+                            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                            const osc = ctx.createOscillator(), gain = ctx.createGain();
+                            osc.connect(gain); gain.connect(ctx.destination);
+                            osc.frequency.value = SOUND_FREQUENCY; osc.type = 'sine';
+                            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + SOUND_DURATION / 1000);
+                            osc.start(); osc.stop(ctx.currentTime + SOUND_DURATION / 1000);
+                        } catch (e) {}
+                    }
+                    addAlertsToHistory(alerts);
+                }
+            }
+
+            // Changement de filtre en temps réel
+            skillFilterSelect.addEventListener('change', () => {
+                if (lastAnalyzedAgents.length > 0) {
+                    renderResults(lastAnalyzedAgents, true); // true pour éviter de rejouer le son
+                }
+            });
+
+            // ==================== HISTORIQUE & EXPORT ====================
+            function addAlertsToHistory(alerts) {
+                const now = new Date(), ts = now.toISOString(), date = ts.split('T')[0], time = now.toLocaleTimeString();
+                alerts.forEach(a => history.push({ timestamp: ts, date, time, agent: a.name, status: a.statusLabel, duration: a.durationStr, hasCCase: a.hasCCase }));
+                saveToLocalStorage();
+                renderHistorySummary();
+            }
+            function renderHistorySummary() {
+                const base = fileHandle ? `Fichier : ${fileHandle.name}` : 'Aucun fichier chargé';
+                fileStatusSpan.textContent = `${base} (${history.length} entrées)`;
+            }
+            function csvEscape(v) { const s = String(v == null ? '' : v); return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+            function exportCSV(date) {
+                const filtered = history.filter(e => e.date === date);
+                if (!filtered.length) return showNotification('Aucune alerte pour cette date.', 'info');
+                const rows = ['Date,Heure,Agent,Statut,Durée,Skill C Case'];
+                filtered.forEach(e => rows.push([csvEscape(e.date), csvEscape(e.time), csvEscape(e.agent), csvEscape(e.status), csvEscape(e.duration), e.hasCCase ? 'Oui' : 'Non'].join(',')));
+                downloadCSV(rows.join('\n'), `alertes_wfm_${date}.csv`);
+                showNotification('Export CSV téléchargé.', 'success');
+            }
+            function exportHistoryCSV() {
+                if (!history.length) return showNotification('Aucun historique.', 'info');
+                const rows = ['Date,Heure,Agent,Statut,Durée,Skill C Case'];
+                history.forEach(e => rows.push([csvEscape(e.date), csvEscape(e.time), csvEscape(e.agent), csvEscape(e.status), csvEscape(e.duration), e.hasCCase ? 'Oui' : 'Non'].join(',')));
+                downloadCSV(rows.join('\n'), `historique_alertes_wfm_complet.csv`);
+                showNotification('Historique complet exporté.', 'success');
+            }
+            function downloadCSV(content, filename) {
+                const blob = new Blob(["\uFEFF" + content], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob); link.download = filename;
+                document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            }
+
+            // ==================== SUPABASE SYNC (Realtime Broadcast) ====================
+            function isSyncActive() { return !!localStorage.getItem(SYNC_ROOM_KEY); }
+            
+            function updateSyncUI() {
+                const active = isSyncActive();
+                const id = localStorage.getItem(SYNC_ROOM_KEY);
+                btnSyncDeactivate.style.display = active ? '' : 'none';
+                btnSyncQR.style.display = active ? '' : 'none';
+                syncCodeInput.disabled = active;
+                
+                if (active) {
+                    syncStatusSpan.classList.add('active');
+                    syncStatusSpan.innerHTML = `<span class="sync-dot"></span>Connecté (${id})`;
+                    syncCodeInput.value = id;
+                } else {
+                    syncStatusSpan.classList.remove('active');
+                    syncStatusSpan.innerHTML = `<span class="sync-dot"></span>Non connecté`;
+                    syncCodeInput.value = '';
+                }
+            }
+
+            async function connectSupabase(roomToJoin) {
+                let roomId = roomToJoin;
+                if (!roomId) {
+                    roomId = 'WFM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+                }
+                
+                if (syncChannel) {
+                    supabaseClient.removeChannel(syncChannel);
+                }
+                
+                syncChannel = supabaseClient.channel(`room_${roomId}`);
+                
+                syncChannel.on('broadcast', { event: 'sync_data' }, (payload) => {
+                    if (payload.payload && payload.payload.text) {
+                        textarea.value = payload.payload.text;
+                        const agents = analyzeText(payload.payload.text);
+                        renderResults(agents, true);
+                        showNotification('🔄 Données reçues du PC !', 'info');
+                    }
+                });
+
+                syncChannel.subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        isSyncing = true;
+                        localStorage.setItem(SYNC_ROOM_KEY, roomId);
+                        updateSyncUI();
+                        showNotification('✅ Connecté à la session Supabase.', 'success');
+                        sendSyncData();
+                    } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                        isSyncing = false;
+                    }
+                });
+            }
+
+            async function sendSyncData() {
+                if (isSyncing && syncChannel) {
+                    await syncChannel.send({
+                        type: 'broadcast',
+                        event: 'sync_data',
+                        payload: { text: textarea.value, timestamp: Date.now() }
+                    });
+                }
+            }
+
+            function disconnectSupabase() {
+                if (syncChannel) {
+                    supabaseClient.removeChannel(syncChannel);
+                    syncChannel = null;
+                }
+                isSyncing = false;
+                localStorage.removeItem(SYNC_ROOM_KEY);
+                updateSyncUI();
+                showNotification('Déconnecté de Supabase.', 'info');
+            }
+
+            async function showQRCode() {
+                const roomId = localStorage.getItem(SYNC_ROOM_KEY);
+                if (!roomId) return;
+                
+                const syncUrl = `${location.href.split('#')[0]}#room=${roomId}`;
+                qrContainer.innerHTML = 'Génération...';
+                
+                try {
+                    const dataUrl = await window.QRCode.toDataURL(syncUrl, { width: 250, margin: 2, color: { dark: '#001d3d', light: '#ffffff' } });
+                    qrContainer.innerHTML = `<img src="${dataUrl}" alt="QR" style="border: 1px solid #ccc; border-radius: 8px;">`;
+                } catch (e) { qrContainer.textContent = 'Erreur QR'; }
+                qrModal.classList.add('show');
+            }
+
+            function checkURLForRoom() {
+                const m = (location.hash || '').match(/room=([A-Za-z0-9-]+)/);
+                if (m) {
+                    const roomId = m[1];
+                    connectSupabase(roomId);
+                    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+                }
+            }
+
+            // ==================== CAPTURE ====================
+            let captureActive = false;
+            function raf2() { return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); }
+            function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+            async function copyCanvasToClipboard(canvas) {
+                if (!window.isSecureContext || !navigator.clipboard || !window.ClipboardItem) {
+                    const link = document.createElement('a'); link.download = `capture_wfm_${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png'); link.click();
+                    return showNotification('📸 Capture téléchargée.', 'info');
+                }
+                try {
+                    const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                    showNotification('📸 Capture copiée.', 'success');
+                } catch (e) {
+                    const link = document.createElement('a'); link.download = `capture_wfm_${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png'); link.click();
+                }
+            }
+            async function captureRegion(l, t, w, h) {
+                const scale = Math.max(window.devicePixelRatio || 1, 2), sx = window.scrollX, sy = window.scrollY;
+                const full = await html2canvas(document.body, { scale, useCORS: true, logging: false, scrollX: -sx, scrollY: -sy });
+                const cx = clamp(Math.round((l + sx) * scale), 0, full.width - 1);
+                const cy = clamp(Math.round((t + sy) * scale), 0, full.height - 1);
+                const cw = clamp(Math.round(w * scale), 1, full.width - cx);
+                const ch = clamp(Math.round(h * scale), 1, full.height - cy);
+                const out = document.createElement('canvas'); out.width = cw; out.height = ch;
+                out.getContext('2d').drawImage(full, cx, cy, cw, ch, 0, 0, cw, ch);
+                return out;
+            }
+            function startScreenCapture() {
+                if (captureActive || typeof html2canvas === 'undefined') return;
+                if (!resultsDiv || resultsDiv.textContent.includes('En attente')) return showNotification('Aucun résultat à capturer.', 'info');
+                captureActive = true;
+                const overlay = document.createElement('div'); overlay.id = 'capture-overlay';
+                const selection = document.createElement('div'); selection.id = 'capture-selection'; overlay.appendChild(selection);
+                const hint = document.createElement('div'); hint.id = 'capture-hint'; hint.innerHTML = '📸 Sélectionnez la zone <kbd>ESC</kbd>';
+                const toolbar = document.createElement('div'); toolbar.id = 'capture-toolbar';
+                const btnRes = document.createElement('button'); btnRes.className = 'btn-analyze'; btnRes.textContent = '📋 Résultats';
+                const btnCan = document.createElement('button'); btnCan.className = 'btn-clear'; btnCan.textContent = '✖ Annuler';
+                toolbar.appendChild(btnRes); toolbar.appendChild(btnCan);
+                document.body.append(overlay, hint, toolbar);
+                let sX = 0, sY = 0, drawing = false;
+                const cleanup = () => { captureActive = false; overlay.remove(); hint.remove(); toolbar.remove(); document.removeEventListener('keydown', escH, true); };
+                const escH = (e) => { if (e.key === 'Escape') { cleanup(); showNotification('Annulé.', 'info'); } };
+                document.addEventListener('keydown', escH, true);
+                overlay.addEventListener('mousedown', e => { drawing = true; sX = e.clientX; sY = e.clientY; selection.style.display = 'block'; selection.classList.remove('success'); });
+                overlay.addEventListener('mousemove', e => {
+                    if (!drawing) return;
+                    Object.assign(selection.style, { left: Math.min(sX, e.clientX) + 'px', top: Math.min(sY, e.clientY) + 'px', width: Math.abs(e.clientX - sX) + 'px', height: Math.abs(e.clientY - sY) + 'px' });
+                });
+                overlay.addEventListener('mouseup', async e => {
+                    if (!drawing) return; drawing = false;
+                    const r = selection.getBoundingClientRect();
+                    if (r.width < 10 || r.height < 10) { selection.style.display = 'none'; return; }
+                    selection.classList.add('success'); overlay.style.display = 'none'; hint.style.display = 'none'; toolbar.style.display = 'none';
+                    await raf2();
+                    try { const canvas = await captureRegion(r.left, r.top, r.width, r.height); cleanup(); await copyCanvasToClipboard(canvas); }
+                    catch (err) { cleanup(); showNotification('Erreur capture.', 'warning'); }
+                });
+                btnRes.addEventListener('click', async e => {
+                    e.stopPropagation();
+                    const r = resultsDiv.getBoundingClientRect();
+                    Object.assign(selection.style, { left: r.left - 8 + 'px', top: r.top - 8 + 'px', width: r.width + 16 + 'px', height: r.height + 16 + 'px', display: 'block' });
+                    selection.classList.add('success'); overlay.style.display = 'none'; hint.style.display = 'none'; toolbar.style.display = 'none';
+                    await raf2();
+                    try { const canvas = await captureRegion(r.left - 8, r.top - 8, r.width + 16, r.height + 16); cleanup(); await copyCanvasToClipboard(canvas); }
+                    catch (err) { cleanup(); showNotification('Erreur capture.', 'warning'); }
+                });
+                btnCan.addEventListener('click', e => { e.stopPropagation(); cleanup(); showNotification('Annulé.', 'info'); });
+            }
+
+            // ==================== INIT & EVENTS ====================
+            btnAnalyze.addEventListener('click', () => {
+                const text = textarea.value;
+                if (!text.trim()) return (resultsDiv.innerHTML = '<div class="no-alert" style="color:red;">Veuillez coller le texte.</div>');
+                const agents = analyzeText(text);
+                if (agents.length === 0) showNotification('Aucun agent reconnu. Le texte doit contenir les matricules.', 'warning');
+                renderResults(agents);
+                sendSyncData();
+            });
+
+            btnClear.addEventListener('click', () => { 
+                textarea.value = ''; 
+                lastAnalyzedAgents = [];
+                resultsDiv.innerHTML = '<div class="no-alert">En attente du tableau à analyser...</div>'; 
+                textarea.focus(); 
+                sendSyncData();
+            });
+
+            textarea.addEventListener('paste', () => { 
+                setTimeout(() => { 
+                    if (textarea.value.trim()) {
+                        const agents = analyzeText(textarea.value);
+                        renderResults(agents); 
+                        sendSyncData();
+                    }
+                }, 100); 
+            });
+
+            btnExportCsv.addEventListener('click', () => exportCSV(exportDateInput.value));
+            btnHistory.addEventListener('click', exportHistoryCSV);
+            btnLoadFile.addEventListener('click', loadFromFile);
+            btnCapture.addEventListener('click', startScreenCapture);
+
+            btnSyncActivate.addEventListener('click', () => {
+                const manualCode = syncCodeInput.value.trim().toUpperCase();
+                connectSupabase(manualCode || null);
+            });
+            btnSyncDeactivate.addEventListener('click', disconnectSupabase);
+            btnSyncQR.addEventListener('click', showQRCode);
+            btnCloseQr.addEventListener('click', () => qrModal.classList.remove('show'));
+
+            setInterval(() => { timeSpan.textContent = new Date().toLocaleTimeString(); }, 1000);
+            timeSpan.textContent = new Date().toLocaleTimeString();
+
+            history = loadFromLocalStorage();
+            renderHistorySummary();
+            updateSyncUI();
+            checkURLForRoom();
+        })();
+    </script>
+</body>
+</html>
